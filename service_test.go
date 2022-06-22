@@ -29,9 +29,9 @@ func TestRequest(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Could not run compose file: %v - %v\n", composeFilePaths, err)
 	}
-
+	conn := initClickHouse("localhost:9001")
 	checkHTTPResponse(t)
-	checkSaveToDB(t)
+	checkSaveToDB(conn, t)
 
 	destroyCompose := func() {
 		err := compose.Down()
@@ -51,7 +51,7 @@ func checkHTTPResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := "localhost:9001"
+	conn := initClickHouse("localhost:9001")
 	cities := []string{"Донецк", "Макеевка"}
 	for i := 0; i < 6; i++ {
 		for _, city := range cities {
@@ -64,29 +64,14 @@ func checkHTTPResponse(t *testing.T) {
 			handler := http.HandlerFunc(CheckHandler)
 			handler.ServeHTTP(rr, req)
 			require.Equal(t, http.StatusOK, rr.Code, "HTTP status code")
-			if err := saveDataToDB(host, dataProcess(employees, int64(i), city)); err != nil {
+			if err := saveDataToDB(conn, dataProcess(employees, int64(i), city)); err != nil {
 				log.Fatal(err)
 			}
 		}
 	}
 }
 
-func checkSaveToDB(t *testing.T) {
-	host := "localhost:9001"
-	conn := clickhouse.OpenDB(&clickhouse.Options{
-		Addr: []string{host},
-		Auth: clickhouse.Auth{
-			Database: "default",
-			Password: "20ilona01",
-		},
-		Settings: clickhouse.Settings{
-			"max_execution_time": 60,
-		},
-		DialTimeout: 5 * time.Second,
-		Compression: &clickhouse.Compression{
-			Method: clickhouse.CompressionLZ4,
-		},
-	})
+func checkSaveToDB(conn *sql.DB, t *testing.T) {
 	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
 		"max_block_size": 10,
 	}), clickhouse.WithProgress(func(p *clickhouse.Progress) {

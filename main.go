@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,30 +15,18 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
-//http://localhost:80/employees?city=Донецк&num=4
-
 func main() {
 	url := "https://square-meter.herokuapp.com/api/employees"
 	employees := []Employee{}
 	getDataFromWeb(url, &employees)
 
+	conn := initClickHouse("clickhouse:9000")
 	fmt.Println("Ожидание...")
-	http.HandleFunc("/employees", func(w http.ResponseWriter, req *http.Request) {
-		city := req.URL.Query().Get("city")
-		numYearWork, err := strconv.ParseInt(req.URL.Query().Get("num"), 10, 64)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		if err := saveDataToDB("clickhouse:9000", dataProcess(employees, numYearWork, city)); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Fprintf(w, "<h1>Save to ClickHouse</h>")
-	})
+	http.HandleFunc("/employees", saveRequest(conn, employees))
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
 }
 
 func getDataFromWeb(url string, empList *[]Employee) {
@@ -63,17 +52,7 @@ func getDataFromWeb(url string, empList *[]Employee) {
 	}
 }
 
-func dataProcess(employees []Employee, num int64, city string) []Employee {
-	list := make([]Employee, 0, len(employees))
-	for i := 0; i < len(employees); i++ {
-		if (employees[i].NumYearWork > num) && (strings.Contains(employees[i].Address, city)) {
-			list = append(list, employees[i])
-		}
-	}
-	return list
-}
-
-func saveDataToDB(host string, employees []Employee) error {
+func initClickHouse(host string) *sql.DB {
 	conn := clickhouse.OpenDB(&clickhouse.Options{
 		Addr: []string{host},
 		Auth: clickhouse.Auth{
@@ -88,6 +67,34 @@ func saveDataToDB(host string, employees []Employee) error {
 			Method: clickhouse.CompressionLZ4,
 		},
 	})
+	return conn
+}
+
+func saveRequest(conn *sql.DB, employees []Employee) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		city := req.URL.Query().Get("city")
+		numYearWork, err := strconv.ParseInt(req.URL.Query().Get("num"), 10, 64)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		if err := saveDataToDB(conn, dataProcess(employees, numYearWork, city)); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprintf(w, "<h1>Save to ClickHouse</h>")
+	}
+}
+
+func dataProcess(employees []Employee, num int64, city string) []Employee {
+	list := make([]Employee, 0, len(employees))
+	for i := 0; i < len(employees); i++ {
+		if (employees[i].NumYearWork > num) && (strings.Contains(employees[i].Address, city)) {
+			list = append(list, employees[i])
+		}
+	}
+	return list
+}
+
+func saveDataToDB(conn *sql.DB, employees []Employee) error {
 	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
 		"max_block_size": 10,
 	}), clickhouse.WithProgress(func(p *clickhouse.Progress) {
