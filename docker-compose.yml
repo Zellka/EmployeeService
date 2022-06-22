@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+    clickhouse:
+        container_name: 'clickhouse'
+        image: yandex/clickhouse-server:latest
+        environment:
+            CLICKHOUSE_PASSWORD: 20ilona01
+        ports:
+            - "8125:8123"
+            - "9001:9000"
+        volumes:
+            - ./data/clickhouse/data:/var/lib/clickhouse
+    app:
+        build:
+            dockerfile: Dockerfile
+            context: .
+        volumes:
+            - ./main
+        ports:
+            - "80:8080"
+        links:
+            - "clickhouse:clickhouse"
