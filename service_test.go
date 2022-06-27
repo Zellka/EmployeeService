@@ -18,6 +18,22 @@ import (
 func TestRequest(t *testing.T) {
 	composeFilePaths := []string{"docker-compose.yml"}
 	compose := tc.NewLocalDockerCompose(composeFilePaths, "my_app")
+	upCompose(compose, composeFilePaths)
+
+	db := initClickHouse("localhost:9001")
+	url := "https://square-meter.herokuapp.com/api/employees"
+	logRepo := rep.NewEmployeeRepository(db)
+	webRepo := rep.NewWebRepository(url)
+	usecase := usecase.NewEmployeeUseCase(logRepo, webRepo)
+	br := broker.NewBroker(usecase)
+
+	checkHTTPResponse(t, br)
+	checkSaveToDB(t, br)
+
+	defer destroyCompose(t, compose)
+}
+
+func upCompose(compose *tc.LocalDockerCompose, composeFilePaths []string) {
 	execError := compose.
 		WithCommand([]string{"up", "-d"}).
 		WithEnv(map[string]string{
@@ -28,24 +44,13 @@ func TestRequest(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Could not run compose file: %v - %v\n", composeFilePaths, err)
 	}
+}
 
-	db := initClickHouse("localhost:9001")
-	url := "https://square-meter.herokuapp.com/api/employees"
-	logRepo := rep.NewEmployeeRepository(db)
-	webRepo := rep.NewWebRepository(url)
-	usecase := usecase.NewEmployeeUseCase(logRepo, webRepo)
-	b := broker.NewBroker(usecase)
-
-	checkHTTPResponse(t, b)
-	checkSaveToDB(t, b)
-
-	destroyCompose := func() {
-		err := compose.Down()
-		if err.Error != nil {
-			t.Fatal(err.Error)
-		}
+func destroyCompose(t *testing.T, compose *tc.LocalDockerCompose) {
+	err := compose.Down()
+	if err.Error != nil {
+		t.Fatal(err.Error)
 	}
-	defer destroyCompose()
 }
 
 func checkHTTPResponse(t *testing.T, b *broker.Broker) {

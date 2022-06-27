@@ -48,15 +48,13 @@ func (r EmployeeRepository) SaveEmployees(employees []models.Employee) error {
 	if err != nil {
 		return err
 	}
-	{
-		batch, err := scope.PrepareContext(ctx, "INSERT INTO employee (Id, Name, Phone, Address, NumYearWork)")
-		if err != nil {
+	batch, err := scope.PrepareContext(ctx, "INSERT INTO employee (Id, Name, Phone, Address, NumYearWork)")
+	if err != nil {
+		return err
+	}
+	for _, emp := range models {
+		if _, err := batch.Exec(emp.Id, emp.Name, emp.Phone, emp.Address, emp.NumYearWork); err != nil {
 			return err
-		}
-		for _, emp := range models {
-			if _, err := batch.Exec(emp.Id, emp.Name, emp.Phone, emp.Address, emp.NumYearWork); err != nil {
-				return err
-			}
 		}
 	}
 	if err := scope.Commit(); err != nil {
@@ -119,10 +117,8 @@ func toModel(emp models.Employee) *EmployeeDTO {
 
 func toModels(es []models.Employee) []*EmployeeDTO {
 	out := make([]*EmployeeDTO, len(es))
-
 	for i, b := range es {
 		out[i] = toModel(b)
 	}
-
 	return out
 }

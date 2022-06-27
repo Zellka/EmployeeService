@@ -46,12 +46,18 @@ func (b *Broker) HandleGetEmployee(employees []models.Employee) func(w http.Resp
 		if status := b.SaveEmployees(employees, numYearWork, city); status != http.StatusOK {
 			log.Fatal(status)
 		}
-		fmt.Fprintf(w, "<h1>Save to ClickHouse</h>")
-		empList, status := b.GetEmployees()
-		printList(empList)
+		employees, status := b.GetEmployees()
 		if status != http.StatusOK {
 			log.Fatal(status)
 		}
+		printEmployees(w, employees)
+	}
+}
+
+func printEmployees(w http.ResponseWriter, employees []models.Employee) {
+	fmt.Fprintf(w, "<h1>Список сотрудников</h>")
+	for _, emp := range employees {
+		fmt.Fprintf(w, "<h2>"+emp.Name+"</h>")
 	}
 }
 
@@ -70,7 +76,6 @@ func ParseEmployee(body []byte) []models.Employee {
 
 func (b *Broker) SaveEmployees(employees []models.Employee, num int64, city string) int {
 	emp := b.useCase.DataProcess(employees, num, city)
-
 	if err := b.useCase.SaveEmployees(emp, num, city); err != nil {
 		return http.StatusInternalServerError
 	}
@@ -83,12 +88,6 @@ func (b *Broker) GetEmployees() ([]models.Employee, int) {
 		return nil, http.StatusInternalServerError
 	}
 	return employees, http.StatusOK
-}
-
-func printList(empList []models.Employee) {
-	for _, emp := range empList {
-		fmt.Println(emp)
-	}
 }
 
 type Employee struct {
@@ -109,12 +108,10 @@ func toEmployee(emp Employee) models.Employee {
 	}
 }
 
-func toEmployees(es []Employee) []models.Employee {
-	out := make([]models.Employee, len(es))
-
-	for i, b := range es {
+func toEmployees(employees []Employee) []models.Employee {
+	out := make([]models.Employee, len(employees))
+	for i, b := range employees {
 		out[i] = toEmployee(b)
 	}
-
 	return out
 }
