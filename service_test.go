@@ -1,17 +1,16 @@
 package main
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
+	broker "MainGoTask/employee/delivery"
+	rep "MainGoTask/employee/repository"
+	usecase "MainGoTask/employee/usecase"
+	"MainGoTask/models"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
-	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 )
@@ -29,29 +28,33 @@ func TestRequest(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Could not run compose file: %v - %v\n", composeFilePaths, err)
 	}
-	conn := initClickHouse("localhost:9001")
-	checkHTTPResponse(t)
-	checkSaveToDB(conn, t)
+
+	db := initClickHouse("localhost:9001")
+	url := "https://square-meter.herokuapp.com/api/employees"
+	logRepo := rep.NewEmployeeRepository(db)
+	webRepo := rep.NewWebRepository(url)
+	usecase := usecase.NewEmployeeUseCase(logRepo, webRepo)
+	b := broker.NewBroker(usecase)
+
+	checkHTTPResponse(t, b)
+	checkSaveToDB(t, b)
 
 	destroyCompose := func() {
 		err := compose.Down()
 		if err.Error != nil {
-			log.Fatal(err.Error)
+			t.Fatal(err.Error)
 		}
 	}
 	defer destroyCompose()
 }
 
-func checkHTTPResponse(t *testing.T) {
-	url := "https://square-meter.herokuapp.com/api/employees"
-	employees := []Employee{}
-	getDataFromWeb(url, &employees)
+func checkHTTPResponse(t *testing.T, b *broker.Broker) {
+	employees := broker.ParseEmployee(b.SetEmployees())
 
 	req, err := http.NewRequest("GET", "/employees", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	conn := initClickHouse("localhost:9001")
 	cities := []string{"Донецк", "Макеевка"}
 	for i := 0; i < 6; i++ {
 		for _, city := range cities {
@@ -64,54 +67,26 @@ func checkHTTPResponse(t *testing.T) {
 			handler := http.HandlerFunc(CheckHandler)
 			handler.ServeHTTP(rr, req)
 			require.Equal(t, http.StatusOK, rr.Code, "HTTP status code")
-			if err := saveDataToDB(conn, dataProcess(employees, int64(i), city)); err != nil {
-				log.Fatal(err)
+
+			if status := b.SaveEmployees(employees, int64(i), city); status != http.StatusOK {
+				t.Fatal(status)
 			}
 		}
 	}
 }
 
-func checkSaveToDB(conn *sql.DB, t *testing.T) {
-	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
-		"max_block_size": 10,
-	}), clickhouse.WithProgress(func(p *clickhouse.Progress) {
-		fmt.Println("progress: ", p)
-	}))
-	if err := conn.PingContext(ctx); err != nil {
-		if exception, ok := err.(*clickhouse.Exception); ok {
-			t.Fatalf("Catch exception [%d] %s \n%s\n", exception.Code, exception.Message, exception.StackTrace)
-		}
-		t.Fatal(err)
+func checkSaveToDB(t *testing.T, b *broker.Broker) {
+	employees, status := b.GetEmployees()
+	if status != http.StatusOK {
+		t.Fatal(status)
 	}
-	rows, err := conn.QueryContext(ctx, "SELECT * FROM employee", 0, "xxx", time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !rows.Next() {
-		t.Fatal("data base is empty")
-	}
-	checkTrueParseData(t, rows)
-	rows.Close()
+	checkTrueParseData(t, employees)
 }
 
-func checkTrueParseData(t *testing.T, rows *sql.Rows) {
-	empList := []Employee{}
-	for rows.Next() {
-		var (
-			id          int64
-			name        string
-			phone       string
-			address     string
-			numYearWork int64
-		)
-		if err := rows.Scan(&id, &name, &phone, &address, &numYearWork); err != nil {
-			t.Fatal(err)
-		}
-		empList = append(empList, Employee{id, name, phone, address, numYearWork})
-	}
-	employee := Employee{Id: 17, Name: "Никифорова Анастасия", Phone: "0716404125", Address: "Донецк, ул.Бирюзова, 25/47", NumYearWork: 5}
-	if employee != empList[0] {
-		t.Fatal("Error parse data")
+func checkTrueParseData(t *testing.T, employees []models.Employee) {
+	employee := models.Employee{Id: 2, Name: "Федосеев Владислав", Phone: "0713504125", Address: "Донецк, ул.Кирова, 255", NumYearWork: 2}
+	if employee != employees[0] {
+		t.Fatal("Error parse data: ", employees[0])
 	}
 }
 
