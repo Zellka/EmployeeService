@@ -1,16 +1,16 @@
 package main
 
 import (
+	domain "MainGoTask/employee/domain"
 	rep "MainGoTask/employee/repository"
 	usecase "MainGoTask/employee/usecase"
-	"MainGoTask/models"
 	"testing"
 )
 
 func TestDataProcess(t *testing.T) {
 	usecase := usecase.NewEmployeeUseCase(rep.EmployeeRepository{}, rep.WebRepository{})
 
-	employees := []models.Employee{
+	employees := []domain.Employee{
 		{Id: 6, Name: "Ivan Ivanov", Phone: "0713508765", Address: "Makeevka, University street, 24", NumYearWork: 5},
 		{Id: 7, Name: "Ivan1 Ivanov", Phone: "0713508765", Address: "Donetsk, University street, 24", NumYearWork: 2},
 		{Id: 8, Name: "Ivan2 Ivanov", Phone: "0713508765", Address: "Gorlovka, Lenina street, 20", NumYearWork: 1},

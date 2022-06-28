@@ -1,8 +1,7 @@
 package delivery
 
 import (
-	"MainGoTask/employee"
-	"MainGoTask/models"
+	domain "MainGoTask/employee/domain"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,11 +12,11 @@ import (
 )
 
 type Broker struct {
-	useCase employee.UseCase
+	useCase domain.UseCase
 	router  *mux.Router
 }
 
-func NewBroker(useCase employee.UseCase) *Broker {
+func NewBroker(useCase domain.UseCase) *Broker {
 	return &Broker{
 		useCase: useCase,
 		router:  mux.NewRouter(),
@@ -36,7 +35,7 @@ func (b *Broker) Start() {
 	}
 }
 
-func (b *Broker) HandleGetEmployee(employees []models.Employee) func(w http.ResponseWriter, req *http.Request) {
+func (b *Broker) HandleGetEmployee(employees []domain.Employee) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		city := req.URL.Query().Get("city")
 		numYearWork, err := strconv.ParseInt(req.URL.Query().Get("num"), 10, 64)
@@ -54,7 +53,7 @@ func (b *Broker) HandleGetEmployee(employees []models.Employee) func(w http.Resp
 	}
 }
 
-func printEmployees(w http.ResponseWriter, employees []models.Employee) {
+func printEmployees(w http.ResponseWriter, employees []domain.Employee) {
 	fmt.Fprintf(w, "<h1>Список сотрудников</h>")
 	for _, emp := range employees {
 		fmt.Fprintf(w, "<h2>"+emp.Name+"</h>")
@@ -65,7 +64,7 @@ func (b *Broker) SetEmployees() []byte {
 	return b.useCase.SetEmployees()
 }
 
-func ParseEmployee(body []byte) []models.Employee {
+func ParseEmployee(body []byte) []domain.Employee {
 	empList := []Employee{}
 	jsonErr := json.Unmarshal(body, &empList)
 	if jsonErr != nil {
@@ -74,7 +73,7 @@ func ParseEmployee(body []byte) []models.Employee {
 	return toEmployees(empList)
 }
 
-func (b *Broker) SaveEmployees(employees []models.Employee, num int64, city string) int {
+func (b *Broker) SaveEmployees(employees []domain.Employee, num int64, city string) int {
 	emp := b.useCase.DataProcess(employees, num, city)
 	if err := b.useCase.SaveEmployees(emp, num, city); err != nil {
 		return http.StatusInternalServerError
@@ -82,7 +81,7 @@ func (b *Broker) SaveEmployees(employees []models.Employee, num int64, city stri
 	return http.StatusOK
 }
 
-func (b *Broker) GetEmployees() ([]models.Employee, int) {
+func (b *Broker) GetEmployees() ([]domain.Employee, int) {
 	employees, err := b.useCase.GetEmployees()
 	if err != nil {
 		return nil, http.StatusInternalServerError
@@ -98,8 +97,8 @@ type Employee struct {
 	NumYearWork int64  `json:"numYearWork"`
 }
 
-func toEmployee(emp Employee) models.Employee {
-	return models.Employee{
+func toEmployee(emp Employee) domain.Employee {
+	return domain.Employee{
 		Id:          emp.Id,
 		Name:        emp.Name,
 		Phone:       emp.Phone,
@@ -108,8 +107,8 @@ func toEmployee(emp Employee) models.Employee {
 	}
 }
 
-func toEmployees(employees []Employee) []models.Employee {
-	out := make([]models.Employee, len(employees))
+func toEmployees(employees []Employee) []domain.Employee {
+	out := make([]domain.Employee, len(employees))
 	for i, b := range employees {
 		out[i] = toEmployee(b)
 	}

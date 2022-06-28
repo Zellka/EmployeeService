@@ -1,4 +1,4 @@
-package models
+package employee
 
 type Employee struct {
 	Id          int64

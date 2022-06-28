@@ -2,9 +2,9 @@ package main
 
 import (
 	broker "MainGoTask/employee/delivery"
+	domain "MainGoTask/employee/domain"
 	rep "MainGoTask/employee/repository"
 	usecase "MainGoTask/employee/usecase"
-	"MainGoTask/models"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -88,8 +88,8 @@ func checkSaveToDB(t *testing.T, b *broker.Broker) {
 	checkTrueParseData(t, employees)
 }
 
-func checkTrueParseData(t *testing.T, employees []models.Employee) {
-	employee := models.Employee{Id: 2, Name: "Федосеев Владислав", Phone: "0713504125", Address: "Донецк, ул.Кирова, 255", NumYearWork: 2}
+func checkTrueParseData(t *testing.T, employees []domain.Employee) {
+	employee := domain.Employee{Id: 2, Name: "Федосеев Владислав", Phone: "0713504125", Address: "Донецк, ул.Кирова, 255", NumYearWork: 2}
 	if employee != employees[0] {
 		t.Fatal("Error parse data: ", employees[0])
 	}

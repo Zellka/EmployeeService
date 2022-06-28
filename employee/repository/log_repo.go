@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"MainGoTask/models"
+	domain "MainGoTask/employee/domain"
 	"context"
 	"database/sql"
 	"fmt"
@@ -21,7 +21,7 @@ func NewEmployeeRepository(db *sql.DB) *EmployeeRepository {
 	}
 }
 
-func (r EmployeeRepository) SaveEmployees(employees []models.Employee) error {
+func (r EmployeeRepository) SaveEmployees(employees []domain.Employee) error {
 	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
 		"max_block_size": 10,
 	}))
@@ -63,7 +63,7 @@ func (r EmployeeRepository) SaveEmployees(employees []models.Employee) error {
 	return err
 }
 
-func (r EmployeeRepository) GetEmployees() ([]models.Employee, error) {
+func (r EmployeeRepository) GetEmployees() ([]domain.Employee, error) {
 	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
 		"max_block_size": 10,
 	}), clickhouse.WithProgress(func(p *clickhouse.Progress) {
@@ -79,7 +79,7 @@ func (r EmployeeRepository) GetEmployees() ([]models.Employee, error) {
 	if err != nil {
 		return nil, err
 	}
-	employees := []models.Employee{}
+	employees := []domain.Employee{}
 	for rows.Next() {
 		var (
 			id          int64
@@ -91,7 +91,7 @@ func (r EmployeeRepository) GetEmployees() ([]models.Employee, error) {
 		if err := rows.Scan(&id, &name, &phone, &address, &numYearWork); err != nil {
 			return nil, err
 		}
-		employees = append(employees, models.Employee{id, name, phone, address, numYearWork})
+		employees = append(employees, domain.Employee{id, name, phone, address, numYearWork})
 	}
 	rows.Close()
 	return employees, rows.Err()
@@ -105,7 +105,7 @@ type EmployeeDTO struct {
 	NumYearWork int64  `json:"numYearWork"`
 }
 
-func toModel(emp models.Employee) *EmployeeDTO {
+func toModel(emp domain.Employee) *EmployeeDTO {
 	return &EmployeeDTO{
 		Id:          emp.Id,
 		Name:        emp.Name,
@@ -115,7 +115,7 @@ func toModel(emp models.Employee) *EmployeeDTO {
 	}
 }
 
-func toModels(es []models.Employee) []*EmployeeDTO {
+func toModels(es []domain.Employee) []*EmployeeDTO {
 	out := make([]*EmployeeDTO, len(es))
 	for i, b := range es {
 		out[i] = toModel(b)
