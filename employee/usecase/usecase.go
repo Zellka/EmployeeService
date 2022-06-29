@@ -19,16 +19,12 @@ func NewEmployeeUseCase(employeeRepo rep.LogRepository, webRepo rep.WebRepositor
 	}
 }
 
-func (emp EmployeekUseCase) GetEmployeesFromWeb() []model.Employee {
-	return emp.webRepo.GetEmployeesFromWeb()
-}
-
 func (emp EmployeekUseCase) SaveEmployees(employees []model.Employee) error {
 	return emp.employeeRepo.SaveEmployees(employees)
 }
 
 func (emp EmployeekUseCase) GetEmployees(num int64, city string) ([]model.Employee, error) {
-	employees := emp.GetEmployeesFromWeb()
+	employees := emp.webRepo.GetEmployeesFromWeb()
 	if err := emp.SaveEmployees(emp.DataProcess(employees, num, city)); err != nil {
 		log.Fatal(err)
 	}

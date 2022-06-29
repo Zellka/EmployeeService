@@ -35,7 +35,6 @@ func (b *Broker) Start() {
 }
 
 func (b *Broker) HandleGetEmployee(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	city := req.URL.Query().Get("city")
 	numYearWork, err := strconv.ParseInt(req.URL.Query().Get("num"), 10, 64)
