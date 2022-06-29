@@ -1,10 +1,9 @@
 package main
 
 import (
-	broker "MainGoTask/employee/delivery"
-	domain "MainGoTask/employee/domain"
 	rep "MainGoTask/employee/repository"
 	usecase "MainGoTask/employee/usecase"
+	model "MainGoTask/model"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -25,10 +24,8 @@ func TestRequest(t *testing.T) {
 	logRepo := rep.NewEmployeeRepository(db)
 	webRepo := rep.NewWebRepository(url)
 	usecase := usecase.NewEmployeeUseCase(logRepo, webRepo)
-	br := broker.NewBroker(usecase)
 
-	checkHTTPResponse(t, br)
-	checkSaveToDB(t, br)
+	checkHTTPResponse(t, usecase)
 
 	defer destroyCompose(t, compose)
 }
@@ -53,9 +50,7 @@ func destroyCompose(t *testing.T, compose *tc.LocalDockerCompose) {
 	}
 }
 
-func checkHTTPResponse(t *testing.T, b *broker.Broker) {
-	employees := broker.ParseEmployee(b.SetEmployees())
-
+func checkHTTPResponse(t *testing.T, use *usecase.EmployeekUseCase) {
 	req, err := http.NewRequest("GET", "/employees", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -72,24 +67,17 @@ func checkHTTPResponse(t *testing.T, b *broker.Broker) {
 			handler := http.HandlerFunc(CheckHandler)
 			handler.ServeHTTP(rr, req)
 			require.Equal(t, http.StatusOK, rr.Code, "HTTP status code")
-
-			if status := b.SaveEmployees(employees, int64(i), city); status != http.StatusOK {
-				t.Fatal(status)
+			empList, err := use.GetEmployees(int64(i), city)
+			if err != nil {
+				t.Fatal(err)
 			}
+			checkTrueParseData(t, empList)
 		}
 	}
 }
 
-func checkSaveToDB(t *testing.T, b *broker.Broker) {
-	employees, status := b.GetEmployees()
-	if status != http.StatusOK {
-		t.Fatal(status)
-	}
-	checkTrueParseData(t, employees)
-}
-
-func checkTrueParseData(t *testing.T, employees []domain.Employee) {
-	employee := domain.Employee{Id: 2, Name: "Федосеев Владислав", Phone: "0713504125", Address: "Донецк, ул.Кирова, 255", NumYearWork: 2}
+func checkTrueParseData(t *testing.T, employees []model.Employee) {
+	employee := model.Employee{Id: 2, Name: "Федосеев Владислав", Phone: "0713504125", Address: "Донецк, ул.Кирова, 255", NumYearWork: 2}
 	if employee != employees[0] {
 		t.Fatal("Error parse data: ", employees[0])
 	}

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	model "MainGoTask/model"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,7 +18,7 @@ func NewWebRepository(url string) *WebRepository {
 	}
 }
 
-func (r WebRepository) SetEmployees() []byte {
+func (r WebRepository) GetEmployeesFromWeb() []model.Employee {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, r.url, nil)
 	if err != nil {
@@ -33,5 +35,27 @@ func (r WebRepository) SetEmployees() []byte {
 	if readErr != nil {
 		log.Fatal(readErr)
 	}
-	return body
+	empList := []Employee{}
+	jsonErr := json.Unmarshal(body, &empList)
+	if jsonErr != nil {
+		log.Fatal(jsonErr)
+	}
+	return toEmployees(empList)
+}
+
+type Employee struct {
+	Id          int64  `json:"id"`
+	Name        string `json:"name"`
+	Phone       string `json:"phone"`
+	Address     string `json:"address"`
+	NumYearWork int64  `json:"numYearWork"`
+}
+
+func toEmployees(employees []Employee) []model.Employee {
+	out := make([]model.Employee, len(employees))
+	for i, b := range employees {
+		emp := model.Employee(b)
+		out[i] = emp
+	}
+	return out
 }

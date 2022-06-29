@@ -1,14 +1,10 @@
 package repository
 
 import (
-	domain "MainGoTask/employee/domain"
-	"context"
+	model "MainGoTask/model"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
-
-	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
 type EmployeeRepository struct {
@@ -16,22 +12,7 @@ type EmployeeRepository struct {
 }
 
 func NewEmployeeRepository(db *sql.DB) *EmployeeRepository {
-	return &EmployeeRepository{
-		db: db,
-	}
-}
-
-func (r EmployeeRepository) SaveEmployees(employees []domain.Employee) error {
-	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
-		"max_block_size": 10,
-	}))
-	if err := r.db.PingContext(ctx); err != nil {
-		if exception, ok := err.(*clickhouse.Exception); ok {
-			fmt.Printf("Catch exception [%d] %s \n%s\n", exception.Code, exception.Message, exception.StackTrace)
-		}
-		return err
-	}
-	_, err := r.db.ExecContext(ctx, `
+	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS employee (
 			Id Int64,
 			Name String,
@@ -41,14 +22,20 @@ func (r EmployeeRepository) SaveEmployees(employees []domain.Employee) error {
 		) engine=Memory
 	`)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
+	return &EmployeeRepository{
+		db: db,
+	}
+}
+
+func (r EmployeeRepository) SaveEmployees(employees []model.Employee) error {
 	scope, err := r.db.Begin()
-	models := toModels(employees)
+	models := toDTOModels(employees)
 	if err != nil {
 		return err
 	}
-	batch, err := scope.PrepareContext(ctx, "INSERT INTO employee (Id, Name, Phone, Address, NumYearWork)")
+	batch, err := scope.Prepare("INSERT INTO employee (Id, Name, Phone, Address, NumYearWork)")
 	if err != nil {
 		return err
 	}
@@ -63,23 +50,12 @@ func (r EmployeeRepository) SaveEmployees(employees []domain.Employee) error {
 	return err
 }
 
-func (r EmployeeRepository) GetEmployees() ([]domain.Employee, error) {
-	ctx := clickhouse.Context(context.Background(), clickhouse.WithSettings(clickhouse.Settings{
-		"max_block_size": 10,
-	}), clickhouse.WithProgress(func(p *clickhouse.Progress) {
-		fmt.Println("progress: ", p)
-	}))
-	if err := r.db.PingContext(ctx); err != nil {
-		if exception, ok := err.(*clickhouse.Exception); ok {
-			log.Fatalf("Catch exception [%d] %s \n%s\n", exception.Code, exception.Message, exception.StackTrace)
-		}
-		return nil, err
-	}
-	rows, err := r.db.QueryContext(ctx, "SELECT * FROM employee", 0, "xxx", time.Now())
+func (r EmployeeRepository) GetEmployees() ([]model.Employee, error) {
+	rows, err := r.db.Query("SELECT * FROM employee", 0, "xxx", time.Now())
 	if err != nil {
 		return nil, err
 	}
-	employees := []domain.Employee{}
+	employees := []model.Employee{}
 	for rows.Next() {
 		var (
 			id          int64
@@ -91,7 +67,7 @@ func (r EmployeeRepository) GetEmployees() ([]domain.Employee, error) {
 		if err := rows.Scan(&id, &name, &phone, &address, &numYearWork); err != nil {
 			return nil, err
 		}
-		employees = append(employees, domain.Employee{id, name, phone, address, numYearWork})
+		employees = append(employees, model.Employee{id, name, phone, address, numYearWork})
 	}
 	rows.Close()
 	return employees, rows.Err()
@@ -105,20 +81,11 @@ type EmployeeDTO struct {
 	NumYearWork int64  `json:"numYearWork"`
 }
 
-func toModel(emp domain.Employee) *EmployeeDTO {
-	return &EmployeeDTO{
-		Id:          emp.Id,
-		Name:        emp.Name,
-		Phone:       emp.Phone,
-		Address:     emp.Address,
-		NumYearWork: emp.NumYearWork,
-	}
-}
-
-func toModels(es []domain.Employee) []*EmployeeDTO {
+func toDTOModels(es []model.Employee) []*EmployeeDTO {
 	out := make([]*EmployeeDTO, len(es))
 	for i, b := range es {
-		out[i] = toModel(b)
+		dto := EmployeeDTO(b)
+		out[i] = &dto
 	}
 	return out
 }
