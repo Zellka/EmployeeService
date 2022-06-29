@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-type EmployeeRepository struct {
+type LogRepository struct {
 	db *sql.DB
 }
 
-func NewEmployeeRepository(db *sql.DB) *EmployeeRepository {
+func NewLogRepository(db *sql.DB) *LogRepository {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS employee (
 			Id Int64,
@@ -24,14 +24,14 @@ func NewEmployeeRepository(db *sql.DB) *EmployeeRepository {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &EmployeeRepository{
+	return &LogRepository{
 		db: db,
 	}
 }
 
-func (r EmployeeRepository) SaveEmployees(employees []model.Employee) error {
+func (r LogRepository) SaveEmployees(employees []model.Employee) error {
 	scope, err := r.db.Begin()
-	models := toDTOModels(employees)
+	emploeesDTO := toDTOModels(employees)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (r EmployeeRepository) SaveEmployees(employees []model.Employee) error {
 	if err != nil {
 		return err
 	}
-	for _, emp := range models {
+	for _, emp := range emploeesDTO {
 		if _, err := batch.Exec(emp.Id, emp.Name, emp.Phone, emp.Address, emp.NumYearWork); err != nil {
 			return err
 		}
@@ -50,7 +50,7 @@ func (r EmployeeRepository) SaveEmployees(employees []model.Employee) error {
 	return err
 }
 
-func (r EmployeeRepository) GetEmployees() ([]model.Employee, error) {
+func (r LogRepository) GetEmployees() ([]model.Employee, error) {
 	rows, err := r.db.Query("SELECT * FROM employee", 0, "xxx", time.Now())
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (r EmployeeRepository) GetEmployees() ([]model.Employee, error) {
 		if err := rows.Scan(&id, &name, &phone, &address, &numYearWork); err != nil {
 			return nil, err
 		}
-		employees = append(employees, model.Employee{id, name, phone, address, numYearWork})
+		employees = append(employees, model.Employee{Id: id, Name: name, Phone: phone, Address: address, NumYearWork: numYearWork})
 	}
 	rows.Close()
 	return employees, rows.Err()

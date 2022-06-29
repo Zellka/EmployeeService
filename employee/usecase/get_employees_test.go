@@ -7,7 +7,7 @@ import (
 )
 
 func TestDataProcess(t *testing.T) {
-	usecase := NewEmployeeUseCase(rep.EmployeeRepository{}, rep.WebRepository{})
+	usecase := NewGetEmployeesUseCase(rep.LogRepository{}, rep.WebRepository{})
 
 	employees := []model.Employee{
 		{Id: 6, Name: "Ivan Ivanov", Phone: "0713508765", Address: "Makeevka, University street, 24", NumYearWork: 5},

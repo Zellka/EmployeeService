@@ -16,10 +16,10 @@ func main() {
 	db := initClickHouse("clickhouse:9000")
 	url := "https://square-meter.herokuapp.com/api/employees"
 
-	logRepo := rep.NewEmployeeRepository(db)
+	logRepo := rep.NewLogRepository(db)
 	webRepo := rep.NewWebRepository(url)
 
-	usecase := usecase.NewEmployeeUseCase(logRepo, webRepo)
+	usecase := usecase.NewGetEmployeesUseCase(logRepo, webRepo)
 	br := broker.NewBroker(usecase)
 	br.Start()
 }

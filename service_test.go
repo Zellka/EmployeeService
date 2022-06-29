@@ -21,9 +21,9 @@ func TestRequest(t *testing.T) {
 
 	db := initClickHouse("localhost:9001")
 	url := "https://square-meter.herokuapp.com/api/employees"
-	logRepo := rep.NewEmployeeRepository(db)
+	logRepo := rep.NewLogRepository(db)
 	webRepo := rep.NewWebRepository(url)
-	usecase := usecase.NewEmployeeUseCase(logRepo, webRepo)
+	usecase := usecase.NewGetEmployeesUseCase(logRepo, webRepo)
 
 	checkHTTPResponse(t, usecase)
 
@@ -50,7 +50,7 @@ func destroyCompose(t *testing.T, compose *tc.LocalDockerCompose) {
 	}
 }
 
-func checkHTTPResponse(t *testing.T, use *usecase.EmployeekUseCase) {
+func checkHTTPResponse(t *testing.T, use *usecase.GetEmployeesUseCase) {
 	req, err := http.NewRequest("GET", "/employees", nil)
 	if err != nil {
 		t.Fatal(err)

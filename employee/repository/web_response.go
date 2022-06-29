@@ -3,7 +3,6 @@ package repository
 import (
 	model "MainGoTask/model"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 )
@@ -31,14 +30,10 @@ func (r WebRepository) GetEmployeesFromWeb() []model.Employee {
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		log.Fatal(readErr)
-	}
 	empList := []Employee{}
-	jsonErr := json.Unmarshal(body, &empList)
-	if jsonErr != nil {
-		log.Fatal(jsonErr)
+	errDecode := json.NewDecoder(res.Body).Decode(&empList)
+	if errDecode != nil {
+		log.Fatal(errDecode)
 	}
 	return toEmployees(empList)
 }
