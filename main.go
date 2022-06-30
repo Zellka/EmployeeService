@@ -14,8 +14,6 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
-//http://localhost:80/employees?city=Донецк&num=4
-
 func main() {
 	db := initClickHouse("clickhouse:9000")
 	url := "https://square-meter.herokuapp.com/api/employees"
@@ -41,7 +39,7 @@ func initClickHouse(host string) *sql.DB {
 		Addr: []string{host},
 		Auth: clickhouse.Auth{
 			Database: "default",
-			Password: "20ilona01",
+			Password: "12345",
 		},
 		Settings: clickhouse.Settings{
 			"max_execution_time": 60,
