@@ -5,6 +5,10 @@ import (
 	rep "MainGoTask/employee/repository"
 	usecase "MainGoTask/employee/usecase"
 	"database/sql"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -21,7 +25,15 @@ func main() {
 
 	usecase := usecase.NewGetEmployeesUseCase(logRepo, webRepo)
 	br := broker.NewBroker(usecase)
-	br.Start()
+
+	go br.Start()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+
+	if err := db.Close(); err != nil {
+		log.Fatalf("error occured on db connection close: %s", err.Error())
+	}
 }
 
 func initClickHouse(host string) *sql.DB {

@@ -55,19 +55,13 @@ func (r LogRepository) GetEmployees() ([]model.Employee, error) {
 	if err != nil {
 		return nil, err
 	}
+	emp := model.Employee{}
 	employees := []model.Employee{}
 	for rows.Next() {
-		var (
-			id          int64
-			name        string
-			phone       string
-			address     string
-			numYearWork int64
-		)
-		if err := rows.Scan(&id, &name, &phone, &address, &numYearWork); err != nil {
+		if err := rows.Scan(&emp.Id, &emp.Name, &emp.Phone, &emp.Address, &emp.NumYearWork); err != nil {
 			return nil, err
 		}
-		employees = append(employees, model.Employee{Id: id, Name: name, Phone: phone, Address: address, NumYearWork: numYearWork})
+		employees = append(employees, emp)
 	}
 	rows.Close()
 	return employees, rows.Err()

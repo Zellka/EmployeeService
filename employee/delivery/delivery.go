@@ -12,11 +12,11 @@ import (
 )
 
 type Broker struct {
-	useCase usecase.UseCase
+	useCase usecase.GetEmployeesUseCase
 	router  *mux.Router
 }
 
-func NewBroker(useCase usecase.UseCase) *Broker {
+func NewBroker(useCase usecase.GetEmployeesUseCase) *Broker {
 	return &Broker{
 		useCase: useCase,
 		router:  mux.NewRouter(),
